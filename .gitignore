@@ -1,0 +1,13 @@
+key.txt
+.env
+__pycache__/
+$tmp/
+*.aux
+*.log
+*.synctex.gz
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.bcf
+*.run.xml
