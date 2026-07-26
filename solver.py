@@ -267,8 +267,9 @@ def call_gemini(api_key: str, file_path: Path, file_type: str, prompt: str) -> s
 
 
 def compile_latex(tex_path: Path, xelatex_path: str) -> bool:
-    """Compile a .tex file with XeLaTeX. Returns True on success."""
+    """Compile a .tex file with XeLaTeX. Returns True if PDF was produced."""
     output_dir = tex_path.parent
+    pdf_path = tex_path.with_suffix(".pdf")
     info(f"Running XeLaTeX on {tex_path.name}...")
 
     with Spinner("Compiling LaTeX to PDF..."):
@@ -284,14 +285,15 @@ def compile_latex(tex_path: Path, xelatex_path: str) -> bool:
             timeout=120,
         )
 
-    if result.returncode != 0:
-        error("XeLaTeX compilation failed.")
-        print(f"\n{DIM}--- XeLaTeX output ---{RESET}")
-        print(result.stderr[-2000:] if len(result.stderr) > 2000 else result.stderr)
-        print(f"{DIM}--- end ---{RESET}")
-        return False
+    # XeLaTeX returns non-zero on warnings too — check if PDF actually exists
+    if pdf_path.exists() and pdf_path.stat().st_size > 0:
+        return True
 
-    return True
+    error("XeLaTeX compilation failed — no PDF produced.")
+    print(f"\n{DIM}--- XeLaTeX output ---{RESET}")
+    print(result.stderr[-2000:] if len(result.stderr) > 2000 else result.stderr)
+    print(f"{DIM}--- end ---{RESET}")
+    return False
 
 
 def cleanup_aux_files(tex_path: Path):
