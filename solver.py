@@ -383,21 +383,27 @@ def main():
             success(f"Image found on clipboard ({clip_img.stat().st_size//1024}KB)")
             confirm = input(f"  Solve this image? [Y/n] ").strip().lower()
             if confirm and confirm != "y":
-                info("Aborted. Paste a new image and try again.")
-                cleanup_temp_file(tmp_file)
-                sys.exit(0)
-            file_path = clip_img
+                info("Skipping clipboard content.")
+                user_input = input("  Enter path to PDF or image file: ").strip()
+                file_path = Path(user_input).resolve()
+                success(f"Input: {file_path.name}")
+            else:
+                file_path = clip_img
         elif clip_file:
             success(f"File found on clipboard: {clip_file.name}")
             confirm = input(f"  Solve {clip_file.name}? [Y/n] ").strip().lower()
             if confirm and confirm != "y":
-                info("Aborted.")
-                sys.exit(0)
-            file_path = clip_file
+                info("Skipping clipboard content.")
+                user_input = input("  Enter path to PDF or image file: ").strip()
+                file_path = Path(user_input).resolve()
+                success(f"Input: {file_path.name}")
+            else:
+                file_path = clip_file
         else:
             error("Clipboard is empty or contains unsupported content.")
-            info("Copy an image or file path to clipboard, then try again.")
-            sys.exit(1)
+            user_input = input("  Enter path to PDF or image file: ").strip()
+            file_path = Path(user_input).resolve()
+            success(f"Input: {file_path.name}")
     elif args.file:
         # Direct file argument
         file_path = Path(args.file).resolve()
@@ -412,17 +418,22 @@ def main():
             success(f"Image found on clipboard ({clip_img.stat().st_size//1024}KB)")
             confirm = input(f"  Solve this image? [Y/n] ").strip().lower()
             if confirm and confirm != "y":
-                info("Aborted. Paste a new image and try again.")
-                cleanup_temp_file(tmp_file)
-                sys.exit(0)
-            file_path = clip_img
+                info("Skipping clipboard content.")
+                user_input = input("  Enter path to PDF or image file: ").strip()
+                file_path = Path(user_input).resolve()
+                success(f"Input: {file_path.name}")
+            else:
+                file_path = clip_img
         elif clip_file:
             success(f"File found on clipboard: {clip_file.name}")
             confirm = input(f"  Solve {clip_file.name}? [Y/n] ").strip().lower()
             if confirm and confirm != "y":
-                info("Aborted.")
-                sys.exit(0)
-            file_path = clip_file
+                info("Skipping clipboard content.")
+                user_input = input("  Enter path to PDF or image file: ").strip()
+                file_path = Path(user_input).resolve()
+                success(f"Input: {file_path.name}")
+            else:
+                file_path = clip_file
         else:
             info("Clipboard has no image or file — prompting for input.")
             user_input = input("  Enter path to PDF or image file: ").strip()
