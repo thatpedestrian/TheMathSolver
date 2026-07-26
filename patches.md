@@ -17,6 +17,7 @@ All notable changes to TheMathSolver are documented here.
 - `requirements.txt` — added `Pillow>=10.0.0`.
 - `solver.py` — clipboard now asks for confirmation (`[Y/n]`) before solving, preventing accidental solves.
 - `solver.py` — fixed false "compilation failed" error: now checks for PDF file existence instead of XeLaTeX exit code (which is non-zero on warnings). Aux files now properly cleaned up.
+- `solver.py` — declining clipboard content (`[n]`) now prompts for a file path instead of exiting.
 
 ## [0.1.0] — 2026-07-26
 
