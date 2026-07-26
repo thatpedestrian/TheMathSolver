@@ -15,6 +15,7 @@ All notable changes to TheMathSolver are documented here.
 ### Changed
 - `AGENTS.md` — added convention: must update `patches.md` at end of every session.
 - `requirements.txt` — added `Pillow>=10.0.0`.
+- `solver.py` — clipboard now asks for confirmation (`[Y/n]`) before solving, preventing accidental solves.
 
 ## [0.1.0] — 2026-07-26
 

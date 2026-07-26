@@ -374,18 +374,28 @@ def main():
     if args.clipboard:
         # Clipboard mode: try image first, then file path
         info("Checking clipboard...")
-        file_path = grab_clipboard_image()
-        if file_path:
-            tmp_file = file_path
-            success(f"Image grabbed from clipboard ({file_path.stat().st_size//1024}KB)")
+        clip_img = grab_clipboard_image()
+        clip_file = grab_clipboard_file()
+        if clip_img:
+            tmp_file = clip_img
+            success(f"Image found on clipboard ({clip_img.stat().st_size//1024}KB)")
+            confirm = input(f"  Solve this image? [Y/n] ").strip().lower()
+            if confirm and confirm != "y":
+                info("Aborted. Paste a new image and try again.")
+                cleanup_temp_file(tmp_file)
+                sys.exit(0)
+            file_path = clip_img
+        elif clip_file:
+            success(f"File found on clipboard: {clip_file.name}")
+            confirm = input(f"  Solve {clip_file.name}? [Y/n] ").strip().lower()
+            if confirm and confirm != "y":
+                info("Aborted.")
+                sys.exit(0)
+            file_path = clip_file
         else:
-            file_path = grab_clipboard_file()
-            if file_path:
-                success(f"File path from clipboard: {file_path.name}")
-            else:
-                error("Clipboard is empty or contains unsupported content.")
-                info("Copy an image or file path to clipboard, then try again.")
-                sys.exit(1)
+            error("Clipboard is empty or contains unsupported content.")
+            info("Copy an image or file path to clipboard, then try again.")
+            sys.exit(1)
     elif args.file:
         # Direct file argument
         file_path = Path(args.file).resolve()
@@ -393,19 +403,29 @@ def main():
     else:
         # Auto-detect: check clipboard first, then prompt
         info("Checking clipboard...")
-        file_path = grab_clipboard_image()
-        if file_path:
-            tmp_file = file_path
-            success(f"Image grabbed from clipboard ({file_path.stat().st_size//1024}KB)")
+        clip_img = grab_clipboard_image()
+        clip_file = grab_clipboard_file()
+        if clip_img:
+            tmp_file = clip_img
+            success(f"Image found on clipboard ({clip_img.stat().st_size//1024}KB)")
+            confirm = input(f"  Solve this image? [Y/n] ").strip().lower()
+            if confirm and confirm != "y":
+                info("Aborted. Paste a new image and try again.")
+                cleanup_temp_file(tmp_file)
+                sys.exit(0)
+            file_path = clip_img
+        elif clip_file:
+            success(f"File found on clipboard: {clip_file.name}")
+            confirm = input(f"  Solve {clip_file.name}? [Y/n] ").strip().lower()
+            if confirm and confirm != "y":
+                info("Aborted.")
+                sys.exit(0)
+            file_path = clip_file
         else:
-            file_path = grab_clipboard_file()
-            if file_path:
-                success(f"File path from clipboard: {file_path.name}")
-            else:
-                info("Clipboard has no image or file — prompting for input.")
-                user_input = input("  Enter path to PDF or image file: ").strip()
-                file_path = Path(user_input).resolve()
-                success(f"Input: {file_path.name}")
+            info("Clipboard has no image or file — prompting for input.")
+            user_input = input("  Enter path to PDF or image file: ").strip()
+            file_path = Path(user_input).resolve()
+            success(f"Input: {file_path.name}")
 
     # Step 2: Load API key + detect type
     current_step += 1
