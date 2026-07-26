@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -31,7 +32,7 @@ MIME_TYPES = {
     ".gif": "image/gif",
 }
 
-# ANSI colors — use sys.stdout.reconfigure or env var if broken on Windows
+# ANSI colors
 BOLD = "\033[1m"
 DIM = "\033[2m"
 CYAN = "\033[36m"
@@ -117,6 +118,41 @@ def load_api_key() -> str:
         info("Get a free key at https://aistudio.google.com/apikey")
         sys.exit(1)
     return key
+
+
+def grab_clipboard_image() -> Path | None:
+    """Try to grab an image from the Windows clipboard. Returns path to temp file or None."""
+    try:
+        from PIL import ImageGrab
+        img = ImageGrab.grabclipboard()
+        if img is None:
+            return None
+        tmp = Path(tempfile.gettempdir()) / "solver_clipboard.png"
+        img.save(tmp, "PNG")
+        return tmp
+    except Exception:
+        return None
+
+
+def grab_clipboard_file() -> Path | None:
+    """Check if the clipboard contains a file path (e.g. copied from Explorer). Returns Path or None."""
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["powershell", "-command", "Get-Clipboard"],
+            capture_output=True, text=True, timeout=5
+        )
+        clipboard_text = result.stdout.strip()
+        if not clipboard_text:
+            return None
+        # Handle multiple paths (one per line)
+        first_line = clipboard_text.splitlines()[0].strip().strip('"').strip("'")
+        p = Path(first_line)
+        if p.exists() and p.suffix.lower() in ALL_SUPPORTED:
+            return p
+        return None
+    except Exception:
+        return None
 
 
 def detect_file_type(file_path: Path) -> str:
@@ -274,11 +310,20 @@ def cleanup_aux_files(tex_path: Path):
         info(f"Cleaned up {removed} auxiliary file(s)")
 
 
+def cleanup_temp_file(path: Path):
+    """Remove a temporary file if it exists."""
+    try:
+        if path.exists() and path.parent == Path(tempfile.gettempdir()):
+            path.unlink()
+    except Exception:
+        pass
+
+
 def enable_ansi_windows():
     """Enable ANSI escape codes on Windows terminals."""
     import os
     if os.name == "nt":
-        os.system("")  # Enables ANSI on Windows 10+ terminals
+        os.system("")
 
 
 def main():
@@ -292,6 +337,11 @@ def main():
         nargs="?",
         default=None,
         help="Path to PDF or image file containing exercises",
+    )
+    parser.add_argument(
+        "--clipboard",
+        action="store_true",
+        help="Grab image from clipboard instead of file",
     )
     parser.add_argument(
         "--prompt-dir",
@@ -318,12 +368,44 @@ def main():
     current_step += 1
     step(current_step, total_steps, "Loading input")
 
-    file_path = args.file
-    if file_path is None:
-        file_path = input("  Enter path to PDF or image file: ").strip()
+    file_path = None
+    tmp_file = None
 
-    file_path = Path(file_path).resolve()
-    success(f"Input: {file_path.name}")
+    if args.clipboard:
+        # Clipboard mode: try image first, then file path
+        info("Checking clipboard...")
+        file_path = grab_clipboard_image()
+        if file_path:
+            tmp_file = file_path
+            success(f"Image grabbed from clipboard ({file_path.stat().st_size//1024}KB)")
+        else:
+            file_path = grab_clipboard_file()
+            if file_path:
+                success(f"File path from clipboard: {file_path.name}")
+            else:
+                error("Clipboard is empty or contains unsupported content.")
+                info("Copy an image or file path to clipboard, then try again.")
+                sys.exit(1)
+    elif args.file:
+        # Direct file argument
+        file_path = Path(args.file).resolve()
+        success(f"Input: {file_path.name}")
+    else:
+        # Auto-detect: check clipboard first, then prompt
+        info("Checking clipboard...")
+        file_path = grab_clipboard_image()
+        if file_path:
+            tmp_file = file_path
+            success(f"Image grabbed from clipboard ({file_path.stat().st_size//1024}KB)")
+        else:
+            file_path = grab_clipboard_file()
+            if file_path:
+                success(f"File path from clipboard: {file_path.name}")
+            else:
+                info("Clipboard has no image or file — prompting for input.")
+                user_input = input("  Enter path to PDF or image file: ").strip()
+                file_path = Path(user_input).resolve()
+                success(f"Input: {file_path.name}")
 
     # Step 2: Load API key + detect type
     current_step += 1
@@ -362,6 +444,7 @@ def main():
         error("No LaTeX content found in the response.")
         info("Raw response:")
         print(f"    {response_text[:500]}")
+        cleanup_temp_file(tmp_file)
         sys.exit(1)
     success("LaTeX extracted from response")
 
@@ -369,7 +452,14 @@ def main():
     current_step += 1
     step(current_step, total_steps, "Generating output")
 
-    tex_path = file_path.with_suffix(".tex")
+    # Output next to the original file (or current dir for clipboard)
+    if tmp_file:
+        # Clipboard image: output to current working directory
+        output_name = "clipboard_exercise"
+        tex_path = Path.cwd() / f"{output_name}.tex"
+    else:
+        tex_path = file_path.with_suffix(".tex")
+
     tex_path.write_text(latex_source, encoding="utf-8")
     success(f"Written: {tex_path.name}")
 
@@ -381,9 +471,13 @@ def main():
             success(f"PDF ready: {pdf_path}")
         else:
             error(f"Compilation failed. Check {tex_path.name} to debug.")
+            cleanup_temp_file(tmp_file)
             sys.exit(1)
     else:
         info("Skipping XeLaTeX (--no-compile)")
+
+    # Cleanup temp file
+    cleanup_temp_file(tmp_file)
 
     # Done
     print(f"\n{BOLD}{GREEN}{'='*50}{RESET}")

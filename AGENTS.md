@@ -39,3 +39,7 @@ python solver.py exercises.pdf
 - After compilation, auxiliary files (`.aux`, `.log`, `.synctex.gz`, etc.) are auto-deleted — only `.tex` and `.pdf` remain.
 - Both prompts require: `fontspec`, `polyglossia`, `bidi` packages. Font is `Latin Modern Roman` for English, `Arial` for Arabic.
 - PDF size limit: 50MB. Image size limit: 20MB.
+
+## Conventions
+
+- **`patches.md`** must be updated at the end of every session that makes changes. Add a new entry under `[Unreleased]` with `Added`, `Changed`, or `Fixed` bullets describing what was done. This is mandatory — never skip it.
